@@ -2,9 +2,6 @@
 
 let Sqlite = require('better-sqlite3');
 let db = new Sqlite('db.sqlite');
-var s;
-var u;
-var t;
 
 /* Fonction permettant de se connecter sur le site */
 exports.login = function (email, password) {
