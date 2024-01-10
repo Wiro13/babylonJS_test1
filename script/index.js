@@ -1,6 +1,7 @@
 let canvas = document.getElementById("renderCanvas");
 let engine = new BABYLON.Engine(canvas, true);
 let ghost; // Declare 'ghost' in a broader scope
+let house;
 
 const createScene = function () {
     const scene = new BABYLON.Scene(engine);
