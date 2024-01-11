@@ -3,6 +3,7 @@
 let express = require('express');
 let mustache = require('mustache-express');
 let model = require('./model');
+let variable;
 
 let fetch;
 (async () => {
