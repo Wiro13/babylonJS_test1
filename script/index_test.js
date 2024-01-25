@@ -1,82 +1,64 @@
 let canvas = document.getElementById("renderCanvas");
 let engine = new BABYLON.Engine(canvas, true);
-let ghost; // Declare 'ghost' in a broader scope
 
 const createScene = function () {
     const scene = new BABYLON.Scene(engine);
+    scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), new BABYLON.CannonJSPlugin());
 
-    // Camera setup
     const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 3, new BABYLON.Vector3(0, 0, 0), scene);
     camera.attachControl(canvas, true);
 
-/*
-    // Camera fixe (ne fonctionne pas)
-    const followCamera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 0, -10), scene, targetMesh);
-    followCamera.attachControl(canvas, true);
-*/
-
-    // Function to create the ghost model and set its position
-    const createGhost = function () {
-        BABYLON.SceneLoader.ImportMesh("", "", "models/test2.glb", scene, function (newMeshes) {
-            ghost = newMeshes[0];
-            ghost.position = new BABYLON.Vector3(0, 0, 0);
-
-            // Create the follow camera after the ghost is loaded
-            followCamera = new BABYLON.FollowCamera("followCamera", new BABYLON.Vector3(0, 5, -10), scene);
-            followCamera.radius = 5; // How far from the object to follow
-            followCamera.heightOffset = 4; // How high above the object to place the camera
-            followCamera.attachControl(canvas, true);
-            followCamera.lockedTarget = ghost; // Target the ghost
-        });
-    };
-
-    // Charge le modele 3D du fantome
-    // createGhost();
-
-    BABYLON.SceneLoader.ImportMesh("", "", "models/room.glb", scene, function (newMeshes) {
-        const model = newMeshes[0];
-        model.position = new BABYLON.Vector3(0, -1, -10);
-    });
-
-    BABYLON.SceneLoader.ImportMesh("", "", "models/tree.glb", scene, function (newMeshes) {
-        const model = newMeshes[0];
-        model.position = new BABYLON.Vector3(0, -1, -10);
-    });
-
-    BABYLON.SceneLoader.ImportMesh("", "", "models/skier.glb", scene, function (newMeshes) {
-        const model = newMeshes[0];
-        model.position = new BABYLON.Vector3(0, -1, 10);
-        var scaleFactor = 10;
-        model.scaling = new BABYLON.Vector3(scaleFactor, scaleFactor, scaleFactor);
-    });
-
-    //const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 10, height: 10});
-    
     const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
     light.intensity = 0.7;
 
-    //const box = BABYLON.MeshBuilder.CreateBox("box", {});
+    const ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 10, height: 10 });
+    ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
 
-    var ghostSpeed = 0.01;
+    const box = BABYLON.MeshBuilder.CreateBox("box", {});
+    box.position.y = 2;
+    box.physicsImpostor = new BABYLON.PhysicsImpostor(box, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 1, restitution: 0.9 }, scene);
 
+    // Chargement de l'arbre
+    let tree;
+    BABYLON.SceneLoader.ImportMesh("", "", "models/tree.glb", scene, function (newMeshes) {
+        tree = newMeshes[0];
+        tree.position = new BABYLON.Vector3(0, 0, 3);
+        let treePhysicsOptions = { mass: 0, restitution: 0.9 };
+        let treeImpostorType = BABYLON.PhysicsImpostor.MeshImpostor;
+        tree.physicsImpostor = new BABYLON.PhysicsImpostor(tree, treeImpostorType, treePhysicsOptions, scene);
+    });
+
+    // Contrôle de la boîte avec les touches du clavier
     window.addEventListener("keydown", function (evt) {
         evt.preventDefault();
-        if (ghost) {
-            switch (evt.key) {
-                case "z":
-                    ghost.position.z = ghost.position.z + 1;
-                    break;
-                case "s":
-                    ghost.position.z = ghost.position.z - 1;
-                    break;
-                case "d":
-                    ghost.position.x = ghost.position.x + 1;
-                    break;
-                case "q":
-                    ghost.position.x = ghost.position.x - 1;
-                    break;
-            }
+        if (!box || !tree) return;
+
+        let delta = 1; // La distance que la boîte se déplace par appui sur une touche
+        let futurePosition = box.position.clone();
+        
+        switch (evt.key) {
+            case "z":
+                futurePosition.z += delta;
+                break;
+            case "s":
+                futurePosition.z -= delta;
+                break;
+            case "d":
+                futurePosition.x += delta;
+                break;
+            case "q":
+                futurePosition.x -= delta;
+                break;
         }
+
+        // Vérification de collision prévue
+        let futureBox = BABYLON.MeshBuilder.CreateBox("futureBox", {}, scene);
+        futureBox.position = futurePosition;
+        if (!futureBox.intersectsMesh(tree, false)) {
+            // Pas de collision, mise à jour de la position
+            box.position = futurePosition;
+        }
+        futureBox.dispose(); // Nettoyer l'objet temporaire
     });
 
     return scene;
@@ -88,6 +70,6 @@ engine.runRenderLoop(function () {
     scene.render();
 });
 
-window.addEventListener("resize", function () {
+window.addEventListener('resize', function () {
     engine.resize();
 });
